@@ -1,0 +1,519 @@
+<!doctype html>
+<html lang="zh-cn">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1" />
+<title>盖洛普优势识别器（学习版）</title>
+<style>
+:root{--bg:#0b1220;--card:#0f172a;--text:#e5e7eb;--muted:#94a3b8;--accent:#22c55e;--accent-weak:#14532d;--border:#1f2937;--btn:#2563eb;--btn-hover:#1d4ed8;--bg-grad1:#0b1220;--bg-grad2:#111827;--input-bg:#0b1220;--input-border:#374151;--badge-bg:#111827;--badge-border:#334155;--soft-bg:#0b1220;--secondary-hover:#111827;--node-bg1:#0b1220;--node-bg2:#0f1a2e}
+.theme-light{--bg:#ffffff;--card:#ffffff;--text:#0f172a;--muted:#475569;--accent:#16a34a;--accent-weak:#bbf7d0;--border:#e2e8f0;--btn:#2563eb;--btn-hover:#1d4ed8;--bg-grad1:#f8fafc;--bg-grad2:#eef2f7;--input-bg:#ffffff;--input-border:#cbd5e1;--badge-bg:#f1f5f9;--badge-border:#e2e8f0;--soft-bg:#f8fafc;--secondary-hover:#f8fafc;--node-bg1:#ffffff;--node-bg2:#f8fafc}
+*{box-sizing:border-box}
+body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;margin:0;line-height:1.6;background:linear-gradient(180deg,var(--bg-grad1),var(--bg-grad2));color:var(--text)}
+header{margin-bottom:16px}
+.container{max-width:960px;margin:32px auto;padding:0 20px}
+.card{background:var(--card);border:1px solid var(--border);border-radius:14px;padding:18px 18px;box-shadow:0 10px 30px rgba(0,0,0,.25);margin:16px 0}
+.q{margin:14px 0}
+.q-title{font-weight:800;margin-bottom:12px;font-size:24px;letter-spacing:.2px}
+.actions{margin-top:16px;display:flex;gap:12px;flex-wrap:wrap}
+button{padding:10px 16px;border-radius:10px;border:1px solid #3b82f6;background:var(--btn);color:#fff;cursor:pointer;transition:all .15s ease}
+button:hover{background:var(--btn-hover)}
+button.secondary{background:transparent;color:var(--text);border-color:var(--input-border)}
+button.secondary:hover{background:var(--secondary-hover)}
+select{background:var(--input-bg);border:1px solid var(--input-border);color:var(--text);border-radius:10px;padding:8px 10px}
+button:disabled{opacity:.5;cursor:not-allowed}
+input[type="text"]{background:var(--input-bg);border:1px solid var(--input-border);color:var(--text);border-radius:10px;padding:10px 12px;min-width:220px}
+label>.sub{display:block;color:var(--muted);font-size:12px;margin-top:4px}
+.result{margin-top:24px}
+.hidden{display:none}
+.grid{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+@media (max-width:860px){.grid{grid-template-columns:1fr}}
+ol{padding-left:22px}
+.muted{color:var(--muted)}
+.badge{display:inline-block;background:var(--badge-bg);border:1px solid var(--badge-border);border-radius:999px;padding:2px 8px;font-size:12px;margin-left:6px;color:var(--text)}
+.error{color:#fca5a5}
+.progress{height:10px;background:var(--soft-bg);border:1px solid var(--badge-border);border-radius:999px;overflow:hidden;margin:8px 0 12px}
+.bar{height:100%;background:var(--accent);width:0%;transition:width .2s ease}
+.nav{display:flex;gap:8px;align-items:center;margin-top:8px}
+.spacer{flex:1}
+.pill{display:inline-block;padding:4px 10px;border:1px solid var(--input-border);border-radius:999px;font-size:12px;color:var(--text);background:var(--soft-bg)}
+.ab-wrap{position:relative;display:grid;grid-template-columns:1fr 1fr;gap:14px;margin-bottom:12px;padding:6px 4px 0}
+.ab-wrap::before{content:"";position:absolute;left:50%;top:2px;bottom:10px;width:1px;background:linear-gradient(180deg,transparent,#334155,transparent);transform:translateX(-50%);opacity:.8}
+.ab-wrap::after{content:"VS";position:absolute;left:50%;top:50%;transform:translate(-50%,-50%);font-weight:900;font-size:11px;color:#a7f3d0;background:linear-gradient(180deg,#0b1220,#0e172a);border:1px solid #14532d;border-radius:999px;padding:3px 8px;box-shadow:0 4px 20px rgba(16,185,129,.15)}
+.ab-wrap.vertical{grid-template-columns:1fr;padding-top:0;margin-bottom:16px}
+.ab-wrap.vertical::before,.ab-wrap.vertical::after{display:none}
+.ab{padding:12px 14px;border:1px solid var(--badge-border);border-radius:10px;background:transparent;transition:none;box-shadow:none}
+/* 题目A/B块：取消悬浮高亮效果 */
+.ab:hover{transform:none;border-color:var(--badge-border);box-shadow:none}
+.ab-title{display:flex;align-items:center;gap:10px;font-weight:800;font-size:16px;margin-bottom:8px}
+.ab-badge{width:28px;height:28px;border-radius:999px;display:inline-flex;align-items:center;justify-content:center;font-weight:900;letter-spacing:.5px}
+.ab-a{background:transparent}
+.ab-b{background:transparent}
+.ab-a .ab-badge{background:rgba(16,185,129,.12);color:#10b981;border:1px solid #10b981;box-shadow:inset 0 0 0 1px rgba(16,185,129,.2)}
+.ab-b .ab-badge{background:rgba(59,130,246,.12);color:#3b82f6;border:1px solid #3b82f6;box-shadow:inset 0 0 0 1px rgba(59,130,246,.2)}
+.ab-text{color:var(--text);font-size:15px;line-height:1.65}
+@media (max-width:860px){.ab-wrap{grid-template-columns:1fr}}
+.scale{display:flex;gap:14px;align-items:stretch;justify-content:space-between;margin-top:18px}
+.scale label{flex:1;cursor:pointer;user-select:none}
+.scale input{display:none}
+.node{height:64px;border:1px solid var(--input-border);border-radius:14px;background:linear-gradient(180deg,var(--node-bg1),var(--node-bg2));display:flex;flex-direction:column;align-items:center;justify-content:center;gap:0;transition:transform .12s ease,border-color .12s ease,box-shadow .12s ease}
+.node .hint{display:none}
+.node .strong{font-size:16px;font-weight:800}
+/* 五档节点：悬浮放大 + 边框变亮 */
+.scale label:hover .node{
+  border-color:#60a5fa; /* 亮蓝，提高可见度 */
+  box-shadow:0 4px 16px rgba(59,130,246,.18);
+  transform:translateY(-1px) scale(1.02);
+}
+.scale input:checked + .node{border-color:#22c55e;box-shadow:0 0 0 2px rgba(34,197,94,.25);transform:translateY(-1px)}
+.node.a{background:linear-gradient(180deg,rgba(20,83,45,.25),transparent)}
+.node.b{background:linear-gradient(180deg,rgba(30,64,175,.2),transparent)}
+.node.mid{background:linear-gradient(180deg,rgba(148,163,184,.15),transparent)}
+.chart{margin:8px 0 12px}
+.bar-row{display:flex;align-items:center;gap:10px;margin:8px 0}
+.bar-label{width:110px;font-size:13px;color:var(--muted);white-space:nowrap;overflow:hidden;text-overflow:ellipsis}
+.bar-wrap{flex:1;height:12px;background:var(--soft-bg);border:1px solid var(--badge-border);border-radius:999px;overflow:hidden}
+.bar{height:100%;background:linear-gradient(90deg,#22c55e,#16a34a);width:0}
+.bar-val{width:64px;text-align:right;font-size:12px;color:#cbd5e1}
+.q-instruction{font-weight:800;margin:12px 0 12px;font-size:24px;letter-spacing:.2px}
+.live-head{display:flex;align-items:center;gap:10px;justify-content:space-between}
+.live-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px}
+@media (max-width:860px){.live-grid{grid-template-columns:1fr}}
+.live-box{border:1px solid var(--badge-border);background:var(--soft-bg);border-radius:12px;padding:12px}
+.live-top li{margin:6px 0}
+.live-full{max-height:520px;overflow:auto}
+.live-full li{margin:4px 0;color:var(--muted)}
+@media print{header,.actions,#quiz,#toggleLive,#export,#exportXls,#printBtn,#start,#reset,#continue,#themeSelect,#scoreFmtSelect{ display:none !important; } body{ background:#fff; color:#000; } .card{ box-shadow:none; border:none; }}
+</style>
+</head>
+<body>
+<div class="container">
+<header>
+  <div style="display:flex;align-items:center;gap:12px;justify-content:space-between;flex-wrap:wrap">
+  <h1 style="margin:0">盖洛普优势识别器（学习版）</h1>
+    <div style="display:flex;align-items:center;gap:14px;flex-wrap:wrap">
+      <label style="display:flex;align-items:center;gap:8px"><span class="muted">外观</span>
+        <select id="themeSelect"><option value="auto">自动跟随系统</option><option value="light">亮色</option><option value="dark">暗色</option></select>
+      </label>
+      <label style="display:flex;align-items:center;gap:8px"><span class="muted">分值显示</span>
+        <select id="scoreFmtSelect"><option value="decimal">小数(0~1)</option><option value="percent">百分比</option></select>
+      </label>
+    </div>
+  </div>
+  <p class="muted">本网站内容由GPT-5生成，个人学习爱好，不可用于商业用途，违者必究</p>
+</header>
+<div class="card">
+  <h3>开始测试</h3>
+  <p class="muted" id="dataStatus">题库：已内置装载。</p>
+  <div style="display:flex;gap:12px;align-items:center;flex-wrap:wrap;margin:8px 0 12px">
+    <label>测试人员姓名
+      <input id="testerName" type="text" placeholder="请输入姓名" />
+      <span class="sub">开始前必填，将用于结果展示与导出</span>
+    </label>
+  </div>
+  <div class="actions">
+    <button id="start">开始答题</button>
+    <button id="continue" class="secondary hidden">继续上次答题</button>
+    <button id="reset" class="secondary">重置</button>
+  </div>
+</div>
+<div id="quiz" class="card hidden">
+  <div class="muted" id="qHeader"></div>
+  <div class="progress"><div id="qBar" class="bar"></div></div>
+  <div id="qBody"></div>
+  <div class="nav">
+    <button id="prevQ" class="secondary">上一题</button>
+    <button id="nextQ">下一题</button>
+    <span class="spacer"></span>
+    <button id="toggleLive" class="secondary">显示实时结果</button>
+    <span id="qPos" class="pill"></span>
+  </div>
+</div>
+<div id="actions" class="actions hidden">
+  <button id="submit">提交答卷并计算</button>
+  <button id="export" class="secondary" disabled>导出CSV</button>
+  <button id="exportXls" class="secondary" disabled>导出Excel</button>
+  <button id="exportPdf" class="secondary" disabled>导出PDF</button>
+  <button id="printBtn" class="secondary" disabled>打印</button>
+</div>
+<div id="result" class="card hidden"></div>
+<div id="livePanel" class="card hidden">
+  <div class="live-head">
+    <h3 style="margin:0">实时结果</h3>
+    <span class="muted" id="liveStatus"></span>
+  </div>
+  <div class="live-grid">
+    <div class="live-box"><h4 style="margin:0 0 6px 0">TOP 5</h4><ol class="live-top" id="liveTop"></ol></div>
+    <div class="live-box"><h4 style="margin:0 0 6px 0">完整排序（34项）</h4><ol class="live-full" id="liveFull"></ol></div>
+  </div>
+  <p class="muted" style="margin-top:8px">说明：你每完成一道题，系统都会基于已答题目即时累计分数进行排序，仅供参考。</p>
+</div>
+</div>
+<!-- 回退加载：若未构建为单文件，则从同目录加载数据脚本 -->
+<script src="questions.data.js"></script>
+<script src="strengths.long.data.js"></script>
+<!-- 将由构建脚本自动注入完整题库（questions.data.js 内容） -->
+<script id="INLINE_QUESTIONS_DATA">/* INLINE:QUESTIONS_DATA */</script>
+<!-- 将由构建脚本自动注入优势长描述（strengths.long.data.js 内容） -->
+<script id="INLINE_STRENGTHS_LONG">/* INLINE:STRENGTHS_LONG */</script>
+<script>
+// 若未注入则回退为空数组，便于给出清晰提示
+window.QUESTIONS_DATA = (typeof window.QUESTIONS_DATA!== 'undefined' && Array.isArray(window.QUESTIONS_DATA)) ? window.QUESTIONS_DATA : [];
+</script>
+<script>
+const STRENGTHS = [
+  { name: "取悦", desc: "取悦主题较强的人喜欢结交新人并博取其欢心。能够在人际交往中打破坚冰、建立联系令他们倍感快慰。" },
+  { name: "战略", desc: "战略主题较强的人足智多谋。针对不同的方案，能迅速找出相关的模式及结果。" },
+  { name: "追求", desc: "追求主题较强的人希望在别人的眼中非同凡响。他们独立性强，渴望被承认。" },
+  { name: "自信", desc: "自信心强的人对自身的能力充满信心。他们有自己的处世准则，做决定时成竹在胸。" },
+  { name: "排难", desc: "排除故障的行家里手善于发现问题并解决问题。" },
+  { name: "责任", desc: "责任心强的人言必有信。他们信奉的价值观是诚实、忠诚。" },
+  { name: "交往", desc: "交往能力强的人喜欢人际间的亲密关系。他们最大的满足是与朋友一道为实现一个目标而同舟共济。" },
+  { name: "积极", desc: "积极的人浑身充满了富有感染力的热情。他们用快乐、向上来感召周围的人。" },
+  { name: "完美", desc: "完美主题较强的人专注于激励个人和团体追求卓越。他们相信强中自有强中手。" },
+  { name: "学习", desc: "学习能力强的人有旺盛的求知欲，渴望不断提高自我。尤其令他们激动的，是求知的过程而非结果。" },
+  { name: "思维", desc: "思维能力较强的人的最大特点是长于思考。他们勤于自省，敏于探讨。" },
+  { name: "搜集", desc: "搜集主题较强的人充满好奇。他们通常喜欢搜集、整理各种各样的信息。" },
+  { name: "个别", desc: "个别主题较强的人对每个人的与众不同之处兴趣盎然。他们善于琢磨如何将个性迥异的人组合在一起，创造出最大成效。" },
+  { name: "包容", desc: "包容力强的人善于接纳人。他们关心那些被忽略的人们，并让他们溶入集体。" },
+  { name: "理念", desc: "他们痴迷于各种理念，能够从貌似毫无关联的现象中找出其相互联系。" },
+  { name: "和谐", desc: "和谐主题较强的人渴求协调一致。他们避免冲突，寻求共识。" },
+  { name: "前瞻", desc: "对于有较强前瞻力的人而言，未来令人心潮澎湃。他们用对未来的憧憬激励周围的人。" },
+  { name: "专注", desc: "专注力强的人能够确定方向，贯彻始终，及时调整，矢志不渝。他们先确定重点，再着手行动。" },
+  { name: "公平", desc: "公平心强的人深知应平等待人。他们确立并坚持这一准则，即公平地对待每一个人。" },
+  { name: "体谅", desc: "他们能够设身处地地体会他人的情感。" },
+  { name: "纪律", desc: "纪律性强的人做事井然有序，有章有法。他们建立规程，遵章守纪。" },
+  { name: "伯乐", desc: "他们善于赏识并发掘他人的潜能。他们能够察觉任何细微的进步，并乐在其中。" },
+  { name: "审慎", desc: "他们每做一个决定均慎之又慎，并设想所有的困难。" },
+  { name: "回顾", desc: "回顾主题较强的人喜欢追溯从前。他们通过揣摩过去来了解当前。" },
+  { name: "关联", desc: "关联主题较强的人深信世间万物都彼此关联。没有巧合，凡事必有成因。" },
+  { name: "竞争", desc: "竞争性强的人参照他人的表现来衡量自身的进步。他们力争第一，陶醉于竞争的喜悦中。" },
+  { name: "沟通", desc: "沟通能力强的人善于将想法付诸言辞，他们是极佳的交谈者和生动的讲解者。" },
+  { name: "统率", desc: "统率力强的人有大将风度。他们运筹帷幄，指挥若定。" },
+  { name: "信仰", desc: "有强烈信仰的人必定拥有某种经久不变的核心价值观，并由此形成明确的生活目标。" },
+  { name: "统筹", desc: "统筹力强的人兼具组织能力及确保组织成功的灵活性。他们善于合理安排现有资源以实现最大功效。" },
+  { name: "分析", desc: "分析能力强的人喜欢探究事物的来龙去脉。他们有能力思考可能影响局面的诸多因素。" },
+  { name: "适应", desc: "适应性强的人倾向于“随大流”。他们活在“当前”，接受现实，随遇而安。" },
+  { name: "行动", desc: "行动主题较强的人能够将想法付诸行动。他们往往缺乏耐心。" },
+  { name: "成就", desc: "成就主题较强的人大都精力充沛，锲而不舍。他们乐于忙忙碌碌并有所作为。" },
+];
+// 可选：内嵌或外部注入的“长描述”映射
+const STRENGTHS_LONG = (typeof window!=='undefined' && window.STRENGTHS_LONG && typeof window.STRENGTHS_LONG==='object') ? window.STRENGTHS_LONG : {};
+let QUESTIONS = Array.isArray(window.QUESTIONS_DATA) && window.QUESTIONS_DATA.length > 0 ? window.QUESTIONS_DATA : [];
+const LS_KEY='gallup_answers_v1', NAME_KEY='gallup_tester_name_v1', THEME_KEY='gallup_theme_v1', SCORE_FMT_KEY='gallup_scorefmt_v1';
+const mediaQuery = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)');
+const STRENGTH_COUNTS={ '成就':19,'行动':18,'适应':18,'分析':19,'统筹':15,'信仰':17,'统率':15,'沟通':16,'竞争':15,'关联':18,'回顾':15,'审慎':20,'伯乐':16,'纪律':17,'体谅':15,'公平':16,'专注':16,'前瞻':16,'和谐':16,'理念':18,'包容':17,'个别':16,'搜集':17,'思维':20,'学习':16,'完美':17,'积极':16,'交往':16,'责任':16,'排难':16,'自信':17,'追求':19,'战略':20,'取悦':16 };
+const STRENGTH_ORDER_SHEET1=['成就','行动','适应','分析','统筹','信仰','统率','沟通','竞争','关联','回顾','审慎','伯乐','纪律','体谅','公平','专注','前瞻','和谐','理念','包容','个别','搜集','思维','学习','完美','积极','交往','责任','排难','自信','追求','战略','取悦'];
+let currentIndex=0; let answersState=[]; let themePref='auto'; let scoreFmt='decimal';
+function persistState(){ try{ const name=(document.getElementById('testerName')||{}).value||''; localStorage.setItem(LS_KEY, JSON.stringify({answers:answersState})); if(name) localStorage.setItem(NAME_KEY, name);}catch{}}
+function applyProgressUI(){ const total=QUESTIONS.length; const answered=answersState.filter(v=>v!==undefined).length; const percent= total? Math.round(answered*100/total):0; const bar=document.getElementById('qBar'); if(bar) bar.style.width=percent+'%'; const pos=document.getElementById('qPos'); if(pos) pos.textContent=`进度：${answered}/${total}（${percent}%）`; }
+function formatQuestionTitle(text){
+  if(typeof text!=="string") return `<div class="q-title">${text||''}</div>`;
+  const reA=/A\s*[)）：:、]\s*/i; const reB=/B\s*[)）：:、]\s*/i;
+  const aM=reA.exec(text); const bM=reB.exec(text);
+  const trimATrailing=(s)=> String(s||'')
+    // 去掉末尾空白
+    .replace(/[\s\u3000]+$/,'')
+    // 去掉末尾常见中英文标点与连接符等特殊字符
+    .replace(/[;；/|、，,。.．!！?？:：)…）\]】>》'"“”‘’\-—…]+\s*$/g,'')
+    .trim();
+  if(aM&&bM&&aM.index<bM.index){
+    let aText=text.slice(aM.index+aM[0].length,bM.index);
+    let bText=text.slice(bM.index+bM[0].length);
+    aText = trimATrailing(aText);
+    bText = bText.replace(/^\s*[；;\/|，,]+\s*/, '').trim();
+    return `<div class="q-title">题目：</div><div class="ab-wrap vertical"><div class="ab ab-a"><div class="ab-title"><span class="ab-badge">A</span><span>选项 A</span></div><div class="ab-text">${aText}</div></div><div class="ab ab-b"><div class="ab-title"><span class="ab-badge">B</span><span>选项 B</span></div><div class="ab-text">${bText}</div></div></div>`;
+  }
+  const aMatch2=text.match(/A[：:]\s*([^B]+?)(?=\s*B[：:])/);
+  const bMatch2=text.match(/B[：:]\s*(.*)$/);
+  if(aMatch2&&bMatch2){
+    const aText=trimATrailing(aMatch2[1]);
+    const bText=bMatch2[1].trim();
+    return `<div class="q-title">题目：</div><div class="ab-wrap vertical"><div class="ab ab-a"><div class="ab-title"><span class="ab-badge">A</span><span>选项 A</span></div><div class="ab-text">${aText}</div></div><div class="ab ab-b"><div class="ab-title"><span class="ab-badge">B</span><span>选项 B</span></div><div class="ab-text">${bText}</div></div></div>`;
+  }
+  return `<div class="q-title">${text}</div>`;
+}
+function hasExistingProgress(){ if(Array.isArray(answersState)&&answersState.some(v=>v!==undefined)) return true; try{ const raw=localStorage.getItem(LS_KEY); if(raw){ const obj=JSON.parse(raw); if(Array.isArray(obj.answers)){ if(obj.answers.some(v=>v!==undefined)) return true; } } }catch{} return false; }
+function renderCurrentQuestion(){
+  const total=QUESTIONS.length;
+  const q=QUESTIONS[currentIndex];
+  const qHeader=document.getElementById('qHeader');
+  const qBody=document.getElementById('qBody');
+  qHeader.textContent=`Q${currentIndex+1}/${total}`;
+  const name=`q_${currentIndex}`;
+  const selected=answersState[currentIndex];
+  // Guard: missing question or options
+  if(!q || !Array.isArray(q.options)){
+    qBody.innerHTML = `<div class="error">题库缺失或题目数据异常（第 ${currentIndex+1} 题）。</div>`;
+    const nextBtn=document.getElementById('nextQ');
+    if(nextBtn) nextBtn.disabled=true;
+    return;
+  }
+  const titleHTML=formatQuestionTitle(q.text);
+  const scaleWords=['特别同意A','比较同意A','保持中立','比较同意B','特别同意B'];
+  const scaleHTML=`<div class="scale">`+ q.options.map((opt,j)=>{
+    const checked=selected===j?'checked':'';
+    const cls=j===0?'a': j===4?'b': j===2?'mid': (j<2?'a':'b');
+    const text=scaleWords[j] || opt.text || `选项${j+1}`;
+    return `<label><input type="radio" name="${name}" value="${j}" ${checked}><div class="node ${cls}"><div class="strong">${text}</div></div></label>`;
+  }).join('') + `</div>`;
+  const instructionHTML=`<div class="q-instruction">请在A与B之间选择倾向</div>`;
+  qBody.innerHTML= titleHTML + instructionHTML + scaleHTML;
+  qBody.querySelectorAll(`input[name="${name}"]`).forEach(inp=>{
+    inp.addEventListener('change', e=>{
+      answersState[currentIndex]=Number(e.target.value);
+      persistState();
+      applyProgressUI();
+      updateLivePanelIfVisible();
+      if(currentIndex<QUESTIONS.length-1){
+        currentIndex++;
+        renderCurrentQuestion();
+      } else {
+        window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+      }
+    });
+  });
+  document.getElementById('prevQ').disabled = currentIndex===0;
+  const nextBtn=document.getElementById('nextQ');
+  nextBtn.textContent = currentIndex===total-1? '完成并跳到提交' : '下一题';
+  nextBtn.disabled = (answersState[currentIndex]===undefined);
+  applyProgressUI();
+  updateLivePanelIfVisible();
+}
+function renderQuiz(){ const total=QUESTIONS.length; if(!Array.isArray(answersState)||answersState.length!==total) answersState=new Array(total); document.getElementById('quiz').classList.remove('hidden'); document.getElementById('actions').classList.remove('hidden'); document.getElementById('result').classList.add('hidden'); const firstUnanswered=answersState.findIndex(v=>v===undefined); currentIndex= firstUnanswered>=0? firstUnanswered:0; renderCurrentQuestion(); }
+function computeScores(answers){ const scores=Object.fromEntries(STRENGTHS.map(s=>[s.name,0])); answers.forEach((choiceIdx,qIdx)=>{ const opt=QUESTIONS[qIdx].options[choiceIdx]; if(!opt||!opt.scores) return; for(const k in opt.scores){ if(!(k in scores)) continue; const v=Number(opt.scores[k])||0; scores[k]+=v; } }); return scores; }
+function applyExcelConversion(rawScores){ const out={}; for(const k of Object.keys(rawScores)){ const count=STRENGTH_COUNTS[k]; const denom=(typeof count==='number'&&count>0)? count : 1; out[k]=(rawScores[k]||0)/denom; } return out; }
+function rankAndSort(converted){ const orderIndex=Object.fromEntries(STRENGTH_ORDER_SHEET1.map((n,i)=>[n,i])); const items=Object.keys(converted).map(name=>({name,score:converted[name]||0,idx:(orderIndex[name]??999)})); const groups=new Map(); for(const it of items){ const key=it.score; const arr=groups.get(key)||[]; arr.push(it); groups.set(key,arr);} items.forEach(it=>{ it.baseRank=1+items.filter(x=>x.score>it.score).length; }); const Smap=new Map(); for(const [score,arr] of groups.entries()){ const total=arr.length; const byIdx=arr.slice().sort((a,b)=>a.idx-b.idx); byIdx.forEach((it,pos)=>{ const S= total-(pos+1); Smap.set(it.name,S); }); } items.forEach(it=>{ it.P= it.baseRank + (Smap.get(it.name)||0); }); items.sort((a,b)=> a.P - b.P); return items.map(it=>[it.name,it.score]); }
+function resolveAutoTheme(){ if(mediaQuery&&typeof mediaQuery.matches==='boolean'){ return mediaQuery.matches ? 'light':'dark'; } return 'dark'; }
+function applyTheme(theme){
+  let t=theme;
+  if(t==='auto') t=resolveAutoTheme();
+  t=(t==='light'||t==='dark')?t:'dark';
+  const isLight = (t==='light');
+  document.body.classList.toggle('theme-light', isLight);
+  document.documentElement.classList.toggle('theme-light', isLight);
+}
+let themeSelect, scoreFmtSelect; window.addEventListener('DOMContentLoaded',()=>{ themeSelect=document.getElementById('themeSelect'); scoreFmtSelect=document.getElementById('scoreFmtSelect'); let saved; try{ saved=localStorage.getItem(THEME_KEY);}catch{} themePref = saved || 'auto'; applyTheme(themePref); if(themeSelect){ themeSelect.value=themePref; themeSelect.addEventListener('change',()=>{ themePref=themeSelect.value; try{localStorage.setItem(THEME_KEY,themePref);}catch{} applyTheme(themePref); }); }
+  // 监听系统主题变化（新老API兼容）
+  if(mediaQuery){
+    const onSysChange = ()=>{ const pref=(localStorage.getItem(THEME_KEY)||'auto'); if(pref==='auto') applyTheme('auto'); };
+    if(typeof mediaQuery.addEventListener==='function') mediaQuery.addEventListener('change', onSysChange);
+    else if(typeof mediaQuery.addListener==='function') mediaQuery.addListener(onSysChange);
+  }
+  try{ const savedFmt=localStorage.getItem(SCORE_FMT_KEY); if(savedFmt) scoreFmt=savedFmt; }catch{}
+  if(scoreFmtSelect){ scoreFmtSelect.value=scoreFmt; scoreFmtSelect.addEventListener('change',()=>{ scoreFmt=scoreFmtSelect.value; try{localStorage.setItem(SCORE_FMT_KEY,scoreFmt);}catch{} updateLivePanelIfVisible(); if(!document.getElementById('result').classList.contains('hidden')){ const answers=[]; for(let i=0;i<QUESTIONS.length;i++){ const v=answersState[i]; if(v===undefined){ return; } answers.push(v); } const scores=computeScores(answers); presentResult(scores); } }); }
+});
+function formatScore(v){ return scoreFmt==='percent' ? (v*100).toFixed(1)+'%' : Number(v||0).toFixed(3); }
+function presentResult(scores){
+  const resultDiv=document.getElementById('result');
+  const converted=applyExcelConversion(scores);
+  const sorted=rankAndSort(converted);
+  const top5Arr=sorted.slice(0,5);
+  const top5 = top5Arr.map(([k,v])=>{
+    const short=(STRENGTHS.find(s=>s.name===k)||{}).desc||'';
+    return `<li><strong>${k}</strong> — ${formatScore(v)}<br><span class=\"muted\">${short}</span></li>`;
+  }).join('');
+  const fullTable=generateFullRankingTableHTML(sorted);
+  const name=(document.getElementById('testerName')||{}).value || localStorage.getItem(NAME_KEY) || '未命名';
+  const dateStr=new Date().toLocaleDateString();
+  const chartHTML=generateTop5ChartHTML(top5Arr);
+  const top5Names = top5Arr.map(([k])=>k).join('、');
+  const insights = top5Arr.map(([k])=>{
+  const short=(STRENGTHS.find(s=>s.name===k)||{}).desc||'';
+  const longDescRaw = STRENGTHS_LONG[k];
+  const longDesc=(typeof longDescRaw==='string' && longDescRaw.trim())? longDescRaw.trim() : '';
+  const shortHTML = short? `<div class=\"muted\" style=\"margin:2px 0 8px 0\">短描述：${short}</div>` : '';
+  const longHTML = longDesc? `<div style=\"white-space:pre-wrap;line-height:1.75\">${longDesc}</div>` : '';
+  return `<div class=\"live-box\" style=\"margin-top:10px\"><div style=\"font-weight:800;margin-bottom:6px\">${k}</div>${shortHTML}${longHTML}</div>`;
+  }).join('');
+  resultDiv.innerHTML = `<h2>测试结果</h2><p class=\"muted\">受测者：<strong>${name}</strong>　日期：${dateStr}</p><h3>TOP 5</h3><div class=\"chart\">${chartHTML}</div><ol>${top5}</ol><p style=\"margin-top:8px\">由以上的结果可以看出，您的优势为：<strong>${top5Names}</strong>。</p><h3 style=\"margin-top:14px\">优势解读</h3>${insights}<h3 style=\"margin-top:16px\">完整排序（34项）</h3>${fullTable}`;
+  resultDiv.classList.remove('hidden');
+}
+function generateTop5ChartHTML(entries){ if(!Array.isArray(entries)||entries.length===0) return ''; const max=Math.max(...entries.map(([,v])=>v||0))||1; return entries.map(([k,v])=>{ const pct=Math.max(4, Math.round((v/max)*100)); return `<div class=\"bar-row\"><div class=\"bar-label\">${k}</div><div class=\"bar-wrap\"><div class=\"bar\" style=\"width:${pct}%;\"></div></div><div class=\"bar-val\">${formatScore(v)}</div></div>`; }).join(''); }
+
+// 生成两列并列的完整排序表格
+function generateFullRankingTableHTML(sorted){
+  if(!Array.isArray(sorted)||sorted.length===0) return '';
+  const rows=[];
+  for(let i=0;i<sorted.length;i+=2){
+    const l=sorted[i];
+    const r=sorted[i+1];
+    const lTxt = l ? `${i+1}. ${l[0]} — ${formatScore(l[1])}` : '';
+    const rTxt = r ? `${i+2}. ${r[0]} — ${formatScore(r[1])}` : '';
+    rows.push(`<tr><td style=\"padding:6px 8px;border:1px solid var(--badge-border);vertical-align:top\">${lTxt}</td><td style=\"padding:6px 8px;border:1px solid var(--badge-border);vertical-align:top\">${rTxt}</td></tr>`);
+  }
+  return `<table style=\"width:100%;border-collapse:collapse\"><tbody>${rows.join('')}</tbody></table>`;
+}
+function loadQuestionsOrDemo(){ const status=document.getElementById('dataStatus'); if(QUESTIONS && QUESTIONS.length>0){ status.textContent=`题库：已内置装载，共 ${QUESTIONS.length} 题。`; } else { status.innerHTML=`题库：未找到内置题库，请内嵌 window.QUESTIONS_DATA。<span class="badge">占位</span>`; } try{ const raw=localStorage.getItem(LS_KEY); if(raw){ const obj=JSON.parse(raw); if(Array.isArray(obj.answers)){ const norm=new Array(QUESTIONS.length); for(let i=0;i<norm.length;i++) norm[i]=Array.isArray(obj.answers)?obj.answers[i]:undefined; answersState=norm; const answered=answersState.filter(v=>v!==undefined).length; const contBtn=document.getElementById('continue'); if(contBtn && answered>0){ contBtn.classList.remove('hidden'); status.textContent += ` 已检测到上次进度：${answered}/${QUESTIONS.length}。`; } } } }catch{} }
+function resetAll(){ document.getElementById('quiz').classList.add('hidden'); document.getElementById('actions').classList.add('hidden'); document.getElementById('result').classList.add('hidden'); }
+function updateNoProgressStatus(){ const status=document.getElementById('dataStatus'); if(!status) return; const total=(QUESTIONS&&QUESTIONS.length)?QUESTIONS.length:0; status.textContent = total>0? `题库：已内置装载，共 ${total} 题。无上次进度。` : '题库：无数据。无上次进度。'; }
+function startHandlers(){
+  document.getElementById('start').addEventListener('click',()=>{
+    const name=(document.getElementById('testerName')||{}).value||'';
+    if(!name.trim()){ alert('请先填写测试人员姓名'); return; }
+    if(hasExistingProgress()){
+      const answered=Array.isArray(answersState)?answersState.filter(v=>v!==undefined).length:0;
+      if(!confirm(`检测到上次进度：${answered}/${QUESTIONS.length}。开始新测试将清空当前答题与结果，是否继续？`)) return;
+      if(!confirm('请再次确认：清空并重新开始？')) return;
+    }
+    localStorage.setItem(NAME_KEY, name.trim());
+    const total=QUESTIONS.length;
+    // Guard: dataset not embedded
+    if(total<=0){
+      alert('当前文件未内置题库，请先嵌入 window.QUESTIONS_DATA 再开始。');
+      return;
+    }
+    answersState=new Array(total);
+    currentIndex=0;
+    localStorage.removeItem(LS_KEY);
+    updateNoProgressStatus();
+    document.getElementById('export').disabled=true;
+    const x=document.getElementById('exportXls'); if(x) x.disabled=true;
+    const p=document.getElementById('printBtn'); if(p) p.disabled=true;
+  document.getElementById('result').classList.add('hidden');
+    const contBtn=document.getElementById('continue'); if(contBtn) contBtn.classList.add('hidden');
+    document.getElementById('quiz').classList.remove('hidden');
+    document.getElementById('actions').classList.remove('hidden');
+    renderCurrentQuestion();
+  });
+  document.getElementById('prevQ').addEventListener('click',()=>{ if(currentIndex>0){ currentIndex--; renderCurrentQuestion(); } });
+  document.getElementById('nextQ').addEventListener('click',()=>{
+    if(answersState[currentIndex]!==undefined){
+      if(currentIndex<QUESTIONS.length-1){ currentIndex++; renderCurrentQuestion(); }
+      else {
+        const firstUnanswered=answersState.findIndex(v=>v===undefined);
+        if(firstUnanswered>=0){ currentIndex=firstUnanswered; renderCurrentQuestion(); }
+        else { window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' }); }
+      }
+    } else { alert('请先作答本题'); }
+  });
+  document.getElementById('submit').addEventListener('click',()=>{
+    const answers=[]; let missing=false;
+    for(let i=0;i<QUESTIONS.length;i++){ const v=answersState[i]; if(v===undefined){ missing=true; break; } answers.push(v); }
+    if(missing){
+      alert('你还有未作答的题目，将跳转到第一道未答题');
+      const idx=answersState.findIndex(v=>v===undefined);
+      if(idx>=0){ currentIndex=idx; renderCurrentQuestion(); }
+      return;
+    }
+    const scores=computeScores(answers);
+    presentResult(scores);
+    window.scrollTo({ top: document.body.scrollHeight, behavior: 'smooth' });
+  document.getElementById('export').disabled=false; const x=document.getElementById('exportXls'); if(x) x.disabled=false; const p=document.getElementById('printBtn'); if(p) p.disabled=false; const pdf=document.getElementById('exportPdf'); if(pdf) pdf.disabled=false;
+  });
+  document.getElementById('reset').addEventListener('click',()=>{
+    if(!confirm('确定要重置吗？这将隐藏问卷并清空当前进度。')) return;
+    if(!confirm('请再次确认：重置将无法恢复，是否继续？')) return;
+  resetAll(); document.getElementById('export').disabled=true; const x=document.getElementById('exportXls'); if(x) x.disabled=true; const p=document.getElementById('printBtn'); if(p) p.disabled=true; const pdf=document.getElementById('exportPdf'); if(pdf) pdf.disabled=true;
+    answersState=[]; currentIndex=0; localStorage.removeItem(LS_KEY);
+    const contBtn=document.getElementById('continue'); if(contBtn) contBtn.classList.add('hidden');
+    updateNoProgressStatus();
+    const live=document.getElementById('livePanel'); if(live) live.classList.add('hidden');
+    const tl=document.getElementById('toggleLive'); if(tl) tl.textContent='显示实时结果';
+  });
+  document.getElementById('continue').addEventListener('click',()=>{
+    if(!hasExistingProgress()){ alert('未检测到上次进度'); return; }
+    const name=(document.getElementById('testerName')||{}).value || localStorage.getItem(NAME_KEY) || '';
+    if(!name.trim()){ alert('请先填写测试人员姓名'); return; }
+    localStorage.setItem(NAME_KEY, name.trim());
+    document.getElementById('quiz').classList.remove('hidden');
+    document.getElementById('actions').classList.remove('hidden');
+    document.getElementById('result').classList.add('hidden');
+    const firstUnanswered=answersState.findIndex(v=>v===undefined);
+    currentIndex= firstUnanswered>=0? firstUnanswered:0;
+    renderCurrentQuestion();
+    updateLivePanelIfVisible();
+  });
+  // Toggle live results panel
+  document.getElementById('toggleLive').addEventListener('click',()=>{
+    const panel=document.getElementById('livePanel');
+    const btn=document.getElementById('toggleLive');
+    const hidden=panel.classList.contains('hidden');
+    if(hidden){ panel.classList.remove('hidden'); btn.textContent='隐藏实时结果'; updateLivePanel(); }
+    else { panel.classList.add('hidden'); btn.textContent='显示实时结果'; }
+  });
+  document.getElementById('export').addEventListener('click',()=>{
+    if(document.getElementById('result').classList.contains('hidden')) return;
+    const answers=[]; let missing=false; for(let i=0;i<QUESTIONS.length;i++){ const v=answersState[i]; if(v===undefined){ missing=true; break; } answers.push(v); }
+    if(missing){ alert('请先完成并提交问卷'); return; }
+    const scores=computeScores(answers);
+    const converted=applyExcelConversion(scores);
+    const sorted=rankAndSort(converted);
+    const name=(document.getElementById('testerName')||{}).value || localStorage.getItem(NAME_KEY) || '未命名';
+    const date=new Date(); const yyyy=date.getFullYear(); const mm=String(date.getMonth()+1).padStart(2,'0'); const dd=String(date.getDate()).padStart(2,'0'); const dateStr=`${yyyy}-${mm}-${dd}`;
+    const esc=(s)=>('"'+String(s).replace(/"/g,'""')+'"');
+    const lines=[];
+    lines.push(`姓名,${esc(name)}`);
+    lines.push(`日期,${dateStr}`);
+    lines.push('');
+    // TOP5
+    lines.push('TOP 5');
+    lines.push('NO,优势,得分');
+    const top5=sorted.slice(0,5);
+    top5.forEach(([nm,score],i)=>{ lines.push(`${i+1},${esc(nm)},${esc(formatScore(score))}`); });
+    // 优势解读（短/长描述）
+    lines.push('');
+    lines.push('优势解读');
+    lines.push('优势,短描述,长描述');
+    top5.forEach(([nm])=>{ const short=(STRENGTHS.find(s=>s.name===nm)||{}).desc||''; const long=STRENGTHS_LONG[nm]||''; const shortT=String(short).replace(/[\r\n]+/g,' ').trim(); const longT=String(long).replace(/[\r\n]+/g,' ').trim(); lines.push(`${esc(nm)},${esc(shortT)},${esc(longT)}`); });
+    // 完整排序
+    lines.push('');
+    lines.push('完整排序（34项）');
+    lines.push('NO,优势,得分');
+    sorted.forEach(([nm,score],i)=>{ lines.push(`${i+1},${esc(nm)},${esc(formatScore(score))}`); });
+    const blob=new Blob([lines.join('\n')],{type:'text/csv;charset=utf-8;'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); const safe=String(name).replace(/[^\w\u4e00-\u9fa5\-]+/g,'_'); a.href=url; a.download=`盖洛普优势识别器-结果-${safe}-${yyyy}${mm}${dd}.csv`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  });
+  document.getElementById('exportXls').addEventListener('click',()=>{
+    if(document.getElementById('result').classList.contains('hidden')) return;
+    const answers=[]; for(let i=0;i<QUESTIONS.length;i++){ const v=answersState[i]; if(v===undefined){ alert('请先完成并提交问卷'); return; } answers.push(v); }
+    const name=(document.getElementById('testerName')||{}).value || localStorage.getItem(NAME_KEY) || '未命名';
+    const date=new Date(); const yyyy=date.getFullYear(); const mm=String(date.getMonth()+1).padStart(2,'0'); const dd=String(date.getDate()).padStart(2,'0');
+    const resultEl=document.getElementById('result');
+    const html = `<!doctype html><html><head><meta charset="utf-8"/><style>
+      body{font-family:Arial,Helvetica,"PingFang SC","Microsoft YaHei",sans-serif}
+      h2,h3{margin:8px 0}
+      .muted{color:#555}
+      table{border-collapse:collapse;width:100%}
+      td,th{border:1px solid #999;padding:6px 8px;vertical-align:top}
+    </style></head><body>
+      ${resultEl ? resultEl.innerHTML : ''}
+    </body></html>`;
+    const blob=new Blob([html],{type:'application/vnd.ms-excel'});
+    const url=URL.createObjectURL(blob);
+    const a=document.createElement('a'); const safe=String(name).replace(/[^\w\u4e00-\u9fa5\-]+/g,'_'); a.href=url; a.download=`盖洛普优势识别器-结果-${safe}-${yyyy}${mm}${dd}.xls`;
+    document.body.appendChild(a); a.click(); document.body.removeChild(a); URL.revokeObjectURL(url);
+  });
+
+  // 导出PDF（仅结果区）：打开新窗口写入结果HTML并触发打印，可选择“存为PDF”
+  document.getElementById('exportPdf').addEventListener('click',()=>{
+    if(document.getElementById('result').classList.contains('hidden')) return;
+    const name=(document.getElementById('testerName')||{}).value || localStorage.getItem(NAME_KEY) || '未命名';
+    const date=new Date(); const yyyy=date.getFullYear(); const mm=String(date.getMonth()+1).padStart(2,'0'); const dd=String(date.getDate()).padStart(2,'0');
+    const resultEl=document.getElementById('result');
+    const win=window.open('', '_blank'); if(!win) return;
+    win.document.open();
+    win.document.write(`<!doctype html><html><head><meta charset="utf-8"><title>盖洛普优势识别器-结果-${name}-${yyyy}${mm}${dd}</title><style>
+      *{box-sizing:border-box} body{font-family:Arial,Helvetica,"PingFang SC","Microsoft YaHei",sans-serif;color:#000;background:#fff;margin:16px}
+      h2,h3{margin:8px 0} .muted{color:#555}
+      table{border-collapse:collapse;width:100%} td,th{border:1px solid #999;padding:6px 8px;vertical-align:top}
+      .chart .bar{background:#16a34a}
+    </style></head><body>${resultEl ? resultEl.innerHTML : ''}</body></html>`);
+    win.document.close();
+    win.focus();
+    // 延迟以确保样式应用
+    setTimeout(()=>{ try{ win.print(); }finally{} }, 200);
+  });
+  document.getElementById('printBtn').addEventListener('click',()=>{ if(document.getElementById('result').classList.contains('hidden')) return; window.print(); });
+}
+function buildSortedScoresFromPartial(){ const scores=computeScores(answersState); const converted=applyExcelConversion(scores); return rankAndSort(converted); }
+function updateLivePanel(){ const sorted=buildSortedScoresFromPartial(); const answered=answersState.filter(v=>v!==undefined).length; const statusEl=document.getElementById('liveStatus'); if(statusEl) statusEl.textContent=`已答：${answered}/${QUESTIONS.length}`; const top=document.getElementById('liveTop'); const full=document.getElementById('liveFull'); if(top){ const top5=sorted.slice(0,5).map(([k,v])=>`<li><strong>${k}</strong> — ${formatScore(v)}</li>`).join(''); top.innerHTML=top5; } if(full){ full.innerHTML=sorted.map(([k,v])=>`<li>${k} — ${formatScore(v)}</li>`).join(''); } }
+function updateLivePanelIfVisible(){ const panel=document.getElementById('livePanel'); if(panel && !panel.classList.contains('hidden')) updateLivePanel(); }
+function hasExistingProgress(){ if(Array.isArray(answersState)&&answersState.some(v=>v!==undefined)) return true; try{ const raw=localStorage.getItem(LS_KEY); if(raw){ const obj=JSON.parse(raw); if(Array.isArray(obj.answers)){ if(obj.answers.some(v=>v!==undefined)) return true; } } }catch{} return false; }
+loadQuestionsOrDemo(); startHandlers();
+// 绑定测试面板事件与初始化
+// 测试面板已移除
+</script>
+</body>
+</html>
