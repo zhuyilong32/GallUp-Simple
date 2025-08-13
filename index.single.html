@@ -4,10 +4,27 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1" />
 <title>盖洛普优势识别器（学习版）</title>
+<script>
+  // 早期主题引导，减少FART
+  (function(){
+    try{
+      var pref = localStorage.getItem('gallup_theme_v1') || 'auto';
+      var isLight = false;
+      if(pref==='light') isLight = true;
+      else if(pref==='auto'){
+        var mq = window.matchMedia && window.matchMedia('(prefers-color-scheme: light)');
+        isLight = !!(mq && mq.matches);
+      }
+      if(isLight){ document.documentElement.classList.add('theme-light'); }
+    }catch(e){}
+  })();
+  </script>
 <style>
 :root{--bg:#0b1220;--card:#0f172a;--text:#e5e7eb;--muted:#94a3b8;--accent:#22c55e;--accent-weak:#14532d;--border:#1f2937;--btn:#2563eb;--btn-hover:#1d4ed8;--bg-grad1:#0b1220;--bg-grad2:#111827;--input-bg:#0b1220;--input-border:#374151;--badge-bg:#111827;--badge-border:#334155;--soft-bg:#0b1220;--secondary-hover:#111827;--node-bg1:#0b1220;--node-bg2:#0f1a2e}
 .theme-light{--bg:#ffffff;--card:#ffffff;--text:#0f172a;--muted:#475569;--accent:#16a34a;--accent-weak:#bbf7d0;--border:#e2e8f0;--btn:#2563eb;--btn-hover:#1d4ed8;--bg-grad1:#f8fafc;--bg-grad2:#eef2f7;--input-bg:#ffffff;--input-border:#cbd5e1;--badge-bg:#f1f5f9;--badge-border:#e2e8f0;--soft-bg:#f8fafc;--secondary-hover:#f8fafc;--node-bg1:#ffffff;--node-bg2:#f8fafc}
 *{box-sizing:border-box}
+html{ color-scheme: dark; }
+html.theme-light{ color-scheme: light; }
 body{font-family:system-ui,-apple-system,Segoe UI,Roboto,Helvetica,Arial,"PingFang SC","Noto Sans CJK SC","Microsoft YaHei",sans-serif;margin:0;line-height:1.6;background:linear-gradient(180deg,var(--bg-grad1),var(--bg-grad2));color:var(--text)}
 header{margin-bottom:16px}
 .container{max-width:960px;margin:32px auto;padding:0 20px}
@@ -83,6 +100,20 @@ ol{padding-left:22px}
 .live-full{max-height:520px;overflow:auto}
 .live-full li{margin:4px 0;color:var(--muted)}
 @media print{header,.actions,#quiz,#toggleLive,#export,#exportXls,#printBtn,#start,#reset,#continue,#themeSelect,#scoreFmtSelect{ display:none !important; } body{ background:#fff; color:#000; } .card{ box-shadow:none; border:none; }}
+/* 移动端适配：答案选项避免被挤压 */
+@media (max-width: 540px){
+  .q-title, .q-instruction{ font-size:20px; }
+  .scale{ gap:10px; flex-wrap:wrap; }
+  .scale label{ flex:1 1 calc(50% - 10px); }
+  .scale label:nth-child(3){ flex-basis:100%; }
+  .node{ height:56px; padding:8px 6px; }
+  .node .strong{ font-size:14px; line-height:1.3; text-align:center; }
+}
+@media (max-width: 360px){
+  .scale label{ flex-basis:100%; }
+  .node{ height:52px; }
+  .node .strong{ font-size:13px; }
+}
 </style>
 </head>
 <body>
@@ -289,8 +320,16 @@ function applyTheme(theme){
   if(t==='auto') t=resolveAutoTheme();
   t=(t==='light'||t==='dark')?t:'dark';
   const isLight = (t==='light');
-  document.body.classList.toggle('theme-light', isLight);
-  document.documentElement.classList.toggle('theme-light', isLight);
+  document.documentElement.classList.remove('theme-light');
+  document.body.classList.remove('theme-light');
+  if(isLight){
+    document.documentElement.classList.add('theme-light');
+    document.body.classList.add('theme-light');
+    document.documentElement.style.colorScheme = 'light';
+  }else{
+    document.documentElement.style.colorScheme = 'dark';
+  }
+  document.documentElement.setAttribute('data-theme', isLight? 'light':'dark');
 }
 let themeSelect, scoreFmtSelect; window.addEventListener('DOMContentLoaded',()=>{ themeSelect=document.getElementById('themeSelect'); scoreFmtSelect=document.getElementById('scoreFmtSelect'); let saved; try{ saved=localStorage.getItem(THEME_KEY);}catch{} themePref = saved || 'auto'; applyTheme(themePref); if(themeSelect){ themeSelect.value=themePref; themeSelect.addEventListener('change',()=>{ themePref=themeSelect.value; try{localStorage.setItem(THEME_KEY,themePref);}catch{} applyTheme(themePref); }); }
   // 监听系统主题变化（新老API兼容）
